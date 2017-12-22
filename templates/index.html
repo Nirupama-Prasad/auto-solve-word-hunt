@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Word hunt solver</title>
+        
+    <!-- Bootstrap core CSS -->
+     <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+  
+     <script
+      src="https://code.jquery.com/jquery-1.12.4.min.js"
+      integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ="
+      crossorigin="anonymous"> 
+      </script>    
+     <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+     <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+</head>
+
+<body>
+    <nav class="navbar navbar-inverse">
+        <div class="container-fluid">
+            <div class="navbar-header"><a class="navbar-brand navbar-link" href="#">Bay Monkeys</a>
+                <button class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navcol-1"><span class="sr-only">Toggle navigation</span><span class="icon-bar"></span><span class="icon-bar"></span><span class="icon-bar"></span></button>
+            </div>
+            <div class="collapse navbar-collapse" id="navcol-1">
+                <ul class="nav navbar-nav">
+                    <li role="presentation"><a href="{{ url_for('demo') }}">Demo page</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <div>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="page-header">
+                        <h1>Word Hunt Solver</h1></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!--form - user input-->
+    <form action="/post_puzzle" method="POST" id ="puzzle_form" role='form'>
+      <div>
+        <div class="container">
+          <div class="row">
+            <div class="col-md-6">
+              <textarea form="puzzle_form" rows="10" cols="20" name="maze_text_area" placeholder="Enter maze here" maxlength="4000" minlength="9" style="margin:0px;width:350px;height:350px;padding:2px;"></textarea>
+            </div>
+            <div class="col-md-6">
+              <textarea form="puzzle_form" rows="10" cols="20" name="words_text_area" placeholder="Enter words to find" maxlength="4000" minlength="3" style="margin:0px;width:350px;height:350px;padding:2px;"></textarea>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+          <div class="container">
+              <div class="row">
+                  <div class="col-md-12">
+                      <button class="btn btn-primary btn-lg" type="submit" form='puzzle_form' id='solve_button'>
+                        Solve 
+                    </button>
+                  </div>
+              </div>
+          </div>
+    </div>
+  </form>
+
+  <!--output-->
+   <div>
+        <div class="container" id='solution_header'>
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="page-header">
+                        <h1>Solution</h1></div>
+                </div>
+            </div>
+        </div>
+    </div>
+  <div>
+    <br>
+    <br>
+        <div class="container" id='output_container'>
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="table-responsive">
+                        <table class="table" id='output_table'>
+                            <thead>
+                            </thead>
+                            <tbody id='output_table_body'>
+                                
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                  <h3 id='color_map_title'> Color Map </h3>
+                   <div class="table-responsive">
+                        <table class="table" id='meta_table'>
+                            <thead>
+                            </thead>
+                            <tbody id='meta_table_body'>
+                                
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="row" id='stats_row'>
+              <div class="col-md-12">
+                <table class="table" id='stats_table'>
+                            <thead>
+                              <h4>Words not found</h4>
+                            </thead>
+                            <tbody id='stats_table_body'>
+                            </tbody>
+                          </table>
+              </div>
+            </div>
+        </div>
+    </div>
+
+
+  <!--javascript-->
+  <script type="text/javascript">
+    $(function(){
+
+      $('#output_table').hide();
+      $('#meta_table').hide();
+      $('#solution_header').hide();
+      $('#color_map_title').hide();
+      $('#stats_table').hide();
+      $('#stats_row').hide();
+
+      //Stop form from navigating away
+      $('#puzzle_form').submit(function(event){
+          event.preventDefault();
+      });
+      
+       $('#solve_button').click(function(){
+        $.ajax({
+                url: '/post_puzzle',
+                data: $('#puzzle_form').serialize(),
+                type: 'POST',
+                success: function(response) {
+                    $('#output_table').show();
+                    $('#meta_table').show();
+                    $('#color_map_title').show();
+                    $('#stats_table').show();
+                    $('#stats_row').show();
+
+                    $('#output_table_body').empty();
+                    $('#meta_table_body').empty();
+                    $('#stats_table_body').empty();
+
+                    var words_not_found = response.words_not_found;
+                    var word_answers = response.word_answers;
+                    var new_maze = response.new_maze;
+                    var dir_colors = JSON.parse(response.dir_colors);
+                    var trHTML;
+
+                    //Set up the solution table
+                    for(var row in new_maze){
+                      line = new_maze[row]
+                      trHTML = '<tr>'
+                        for (var each_letter in line){
+                            var details = line[each_letter];
+                            trHTML = trHTML +'<td' + ' BGCOLOR= "' + details.color + '">' + details.letter + '</td>'
+                      }
+                      trHTML += '</tr>'
+                      $('#output_table_body').append(trHTML)
+                    }
+
+                    //Set up meta data:
+                    for (var color in dir_colors){
+                      details = dir_colors[color];
+                      trHTML = '<tr>'
+                      trHTML = trHTML +'<td' + ' BGCOLOR= "' + details + '">' + color + '</td>'
+                      trHTML += '</tr>'
+                      $('#meta_table_body').append(trHTML)
+                    }
+
+                    //Set up diagnostics
+                    if (words_not_found.length == 0){
+                      trHTML = '<tr>'
+                      trHTML = trHTML +'<td>' + 'All words found' + '</td>'
+                      trHTML += '</tr>'
+                      $('#stats_table_body').append(trHTML)
+
+                    }
+                    else{
+                      for (var word in words_not_found){
+                        details = words_not_found[word];
+                        trHTML = '<tr>'
+                        trHTML = trHTML +'<td>' + details + '</td>'
+                        trHTML += '</tr>'
+                        $('#stats_table_body').append(trHTML)
+                    }
+                  }
+
+                  },
+                error: function(error) {
+                  alert('An error occurred: ' + error.responseText['message'] + '- Check demo page for valid examples');
+                }
+
+              });//end of ajax call
+      
+      });//end of solve button ajax
+    
+    }); //end of $(function)
+
+  </script>
+    
+</body>
+
+</html>
